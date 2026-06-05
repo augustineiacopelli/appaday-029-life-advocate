@@ -670,6 +670,14 @@
 const STORAGE_KEY_API  = 'life_advocate_api_key';
 const STORAGE_KEY_NAME = 'life_advocate_name';
 
+// Migrate from old key names if present
+if (!localStorage.getItem(STORAGE_KEY_API) && localStorage.getItem('embrace_api_key')) {
+  localStorage.setItem(STORAGE_KEY_API, localStorage.getItem('embrace_api_key'));
+}
+if (!localStorage.getItem(STORAGE_KEY_NAME) && localStorage.getItem('embrace_advocate_name')) {
+  localStorage.setItem(STORAGE_KEY_NAME, localStorage.getItem('embrace_advocate_name'));
+}
+
 let apiKey       = localStorage.getItem(STORAGE_KEY_API)  || '';
 let advocateName = localStorage.getItem(STORAGE_KEY_NAME) || '';
 let conversationHistory = [];
