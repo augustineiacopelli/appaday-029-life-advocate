@@ -876,6 +876,50 @@ function checkForResolution(text) {
 }
 
 // ── Send to Claude API ─────────────────────────────────
+
+// ── Context compression ────────────────────────────────
+const COMPRESS_THRESHOLD = 20; // compress when history exceeds 20 exchanges (40 msgs)
+const KEEP_RECENT        = 6;  // always keep last 6 messages verbatim
+
+async function compressHistory() {
+  const toSummarize = conversationHistory.slice(0, conversationHistory.length - KEEP_RECENT);
+  const recent      = conversationHistory.slice(conversationHistory.length - KEEP_RECENT);
+
+  const summaryPrompt = `You are summarizing an ongoing conversation between a male pregnancy advocate and a man whose partner is facing an unexpected pregnancy. Produce a concise but complete advocate briefing — 150 words or fewer — covering: the man's name (if given), his partner's situation, how far along the pregnancy is, the key fears and concerns expressed, what life-affirming options have been discussed, any progress or resistance noted, and any unresolved anxieties. Write it as a neutral third-person briefing a colleague would read before stepping into the conversation. Do not editorialize. Just the facts of what has been shared.
+
+Conversation to summarize:
+${toSummarize.map(m => m.role.toUpperCase() + ': ' + m.content).join('\n\n')}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: summaryPrompt }]
+      })
+    });
+    const data = await res.json();
+    const summary = data.content[0]?.text || '';
+
+    // Replace history with synthetic summary message + recent verbatim turns
+    conversationHistory = [
+      { role: 'user',      content: '[CONVERSATION SUMMARY — for advocate context only, not shown to client]: ' + summary },
+      { role: 'assistant', content: 'Understood. Continuing the conversation with full context.' },
+      ...recent
+    ];
+  } catch (e) {
+    // If compression fails, just trim aggressively rather than break the session
+    conversationHistory = conversationHistory.slice(conversationHistory.length - KEEP_RECENT);
+  }
+}
+
 async function sendToAI(userText) {
   if (isTyping || sessionEnded) return;
   isTyping = true;
@@ -887,6 +931,11 @@ async function sendToAI(userText) {
   }
 
   showTyping();
+
+  // Compress if conversation is getting long
+  if (conversationHistory.length > COMPRESS_THRESHOLD * 2) {
+    await compressHistory();
+  }
 
   const messages = conversationHistory.length > 0
     ? conversationHistory
