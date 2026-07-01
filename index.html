@@ -204,6 +204,16 @@
   }
   .settings-portfolio-link:hover { color: var(--gold-light); }
 
+  .welcome-portfolio-link {
+    font-size: 11px;
+    color: rgba(245,240,232,0.22);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+    animation: fadeIn 1s ease 0.6s both;
+  }
+  .welcome-portfolio-link:hover { color: rgba(245,240,232,0.55); }
+
   /* ── Welcome screen ── */
   #welcome {
     flex: 1;
@@ -648,6 +658,7 @@
     <p class="no-key-warning" id="key-warning" style="display:none;">
       ⚙ Please add your API key in Settings before starting.
     </p>
+    <a href="https://augustineiacopelli.github.io/appaday/" target="_blank" class="welcome-portfolio-link">◂ AppADay Portfolio</a>
   </div>
 
   <!-- Chat -->
