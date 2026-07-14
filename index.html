@@ -896,7 +896,7 @@ ${toSummarize.map(m => m.role.toUpperCase() + ': ' + m.content).join('\n\n')}`;
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-5',
+        model: 'claude-opus-4-8',
         max_tokens: 300,
         messages: [{ role: 'user', content: summaryPrompt }]
       })
