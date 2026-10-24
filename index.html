@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="manifest" href="https://augustineiacopelli.github.io/appaday/manifests/029.webmanifest">
 <script src="https://augustineiacopelli.github.io/appaday/save.js" defer></script>
+<script src="https://augustineiacopelli.github.io/appaday/keys.js" data-app="029" data-legacy-key="life_advocate_api_key,embrace_api_key" data-accent="#C8401A" defer></script>
 <title>Life Advocate | AppADay 029</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -604,8 +605,7 @@
   <div id="settings-overlay">
     <div class="settings-box">
       <h2>⚙ Settings</h2>
-      <div class="field-label">Anthropic API Key</div>
-      <input type="password" id="api-key-input" class="settings-input" placeholder="sk-ant-..." autocomplete="off">
+      <div id="keyMount"><div class="field-label">The key manager is loading. If this stays, check your connection and reload.</div></div>
       <div class="field-label">Advocate Name (optional)</div>
       <input type="text" id="advocate-name-input" class="settings-input" placeholder="e.g. Augustine">
       <button class="settings-save" id="settings-save-btn">Save Settings</button>
@@ -685,18 +685,13 @@
 
 <script>
 // ── State ──────────────────────────────────────────────
-const STORAGE_KEY_API  = 'life_advocate_api_key';
 const STORAGE_KEY_NAME = 'life_advocate_name';
 
-// Migrate from old key names if present
-if (!localStorage.getItem(STORAGE_KEY_API) && localStorage.getItem('embrace_api_key')) {
-  localStorage.setItem(STORAGE_KEY_API, localStorage.getItem('embrace_api_key'));
-}
+// Migrate from old name keys if present
 if (!localStorage.getItem(STORAGE_KEY_NAME) && localStorage.getItem('embrace_advocate_name')) {
   localStorage.setItem(STORAGE_KEY_NAME, localStorage.getItem('embrace_advocate_name'));
 }
 
-let apiKey       = localStorage.getItem(STORAGE_KEY_API)  || '';
 let advocateName = localStorage.getItem(STORAGE_KEY_NAME) || '';
 let conversationHistory = [];
 let isTyping     = false;
@@ -779,7 +774,6 @@ You are the warm human presence that helps a frightened man find hope and choose
 // ── DOM refs ───────────────────────────────────────────
 const gearBtn           = document.getElementById('gear-btn');
 const settingsOverlay   = document.getElementById('settings-overlay');
-const apiKeyInput       = document.getElementById('api-key-input');
 const advocateNameInput = document.getElementById('advocate-name-input');
 const settingsSaveBtn   = document.getElementById('settings-save-btn');
 const settingsCloseBtn  = document.getElementById('settings-close-btn');
@@ -794,15 +788,13 @@ const keyWarning        = document.getElementById('key-warning');
 
 // ── Settings ───────────────────────────────────────────
 gearBtn.addEventListener('click', () => {
-  apiKeyInput.value       = apiKey;
+  if (window.AppKeys) window.AppKeys.mountSettings(document.getElementById('keyMount'));
   advocateNameInput.value = advocateName;
   settingsOverlay.classList.add('open');
 });
 
 settingsSaveBtn.addEventListener('click', () => {
-  apiKey       = apiKeyInput.value.trim();
   advocateName = advocateNameInput.value.trim();
-  localStorage.setItem(STORAGE_KEY_API,  apiKey);
   localStorage.setItem(STORAGE_KEY_NAME, advocateName);
   settingsOverlay.classList.remove('open');
 });
@@ -811,8 +803,13 @@ settingsCloseBtn.addEventListener('click', () => settingsOverlay.classList.remov
 settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) settingsOverlay.classList.remove('open'); });
 
 // ── Start ──────────────────────────────────────────────
-startBtn.addEventListener('click', () => {
-  if (!apiKey) { keyWarning.style.display = 'block'; return; }
+startBtn.addEventListener('click', async () => {
+  const key = window.AppKeys ? await window.AppKeys.get() : null;
+  if (!key) {
+    keyWarning.textContent = window.AppKeys ? 'Add your Claude API key with the gear button to begin.' : 'The key manager did not load. Check your connection and reload.';
+    keyWarning.style.display = 'block';
+    return;
+  }
   welcomeEl.style.display = 'none';
   chatEl.classList.add('visible');
   conversationHistory = [];
@@ -885,7 +882,7 @@ function checkForMinor(text) {
 const COMPRESS_THRESHOLD = 20;
 const KEEP_RECENT        = 6;
 
-async function compressHistory() {
+async function compressHistory(apiKey) {
   const toSummarize = conversationHistory.slice(0, conversationHistory.length - KEEP_RECENT);
   const recent      = conversationHistory.slice(conversationHistory.length - KEEP_RECENT);
   const summaryPrompt = `Summarize this advocacy conversation in 150 words or fewer as a neutral third-person briefing covering: the man's name (if given), his partner's situation, gestational age, key fears, life-affirming options discussed, progress or resistance noted, spiritual background disclosed, and any unresolved anxieties.
@@ -926,6 +923,15 @@ async function sendToAI(userText) {
   isTyping = true;
   sendBtn.disabled = true;
 
+  const apiKey = window.AppKeys ? await window.AppKeys.get() : null;
+  if (!apiKey) {
+    isTyping = false;
+    sendBtn.disabled = false;
+    keyWarning.textContent = 'Add your Claude API key with the gear button to continue.';
+    keyWarning.style.display = 'block';
+    return;
+  }
+
   if (userText) {
     conversationHistory.push({ role: 'user', content: userText });
     addBubble(userText, 'user');
@@ -934,7 +940,7 @@ async function sendToAI(userText) {
   showTyping();
 
   if (conversationHistory.length > COMPRESS_THRESHOLD * 2) {
-    await compressHistory();
+    await compressHistory(apiKey);
   }
 
   const messages = conversationHistory.length > 0
@@ -1193,7 +1199,6 @@ carenetBtn.addEventListener('click', () => {
 });
 
 // ── Init ───────────────────────────────────────────────
-if (!apiKey) keyWarning.style.display = 'block';
 
 async function getModel(tier = 'sonnet') {
   try {
