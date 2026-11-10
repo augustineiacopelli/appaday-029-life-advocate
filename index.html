@@ -902,12 +902,12 @@ ${toSummarize.map(m => m.role.toUpperCase() + ': ' + m.content).join('\n\n')}`;
       },
       body: JSON.stringify({
         model: (window.AppModels ? window.AppModels.id('opus') : ''),
-        max_tokens: 300,
+        max_tokens: 3000,
         messages: [{ role: 'user', content: summaryPrompt }]
       })
     });
     const data = await res.json();
-    const summary = data.content[0]?.text || '';
+    const summary = (window.AppModels && window.AppModels.text ? window.AppModels.text(data) : ((data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n\n'))) || '';
     conversationHistory = [
       { role: 'user',      content: '[CONVERSATION SUMMARY — advocate context only]: ' + summary },
       { role: 'assistant', content: 'Understood. Continuing with full context.' },
@@ -958,7 +958,7 @@ async function sendToAI(userText) {
     },
     body: JSON.stringify({
       model: (window.AppModels ? window.AppModels.id('opus') : ''),
-      max_tokens: 800,
+      max_tokens: 6000,
       system: buildSystemPrompt(),
       messages: messages
     })
@@ -986,7 +986,7 @@ async function sendToAI(userText) {
     }
 
     const data   = await response.json();
-    const reply  = data.content[0]?.text || '';
+    const reply  = (window.AppModels && window.AppModels.text ? window.AppModels.text(data) : ((data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n\n'))) || '';
 
     hideTyping();
     conversationHistory.push({ role: 'assistant', content: reply });
